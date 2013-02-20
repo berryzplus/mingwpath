@@ -1,0 +1,21 @@
+#!/bin/bash
+
+function cleanup() {
+rm -f Makefile
+rm -f Makefile.in
+rm -f aclocal.m4
+rm -f config.*
+rm -f configure
+rm -f depcomp
+rm -f install-sh
+rm -f ltmain.sh
+rm -f makefiles.*~
+rm -f mdate-sh
+rm -f missing
+rm -fR autom4te.cache
+rm -fR .deps
+
+rm -f *.exe *.o *.obj
+}
+
+cleanup

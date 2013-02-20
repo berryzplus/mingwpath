@@ -1,0 +1,33 @@
+Installation Instructions
+*************************
+
+Copyright (C) 2013 Minato Hamano.
+
+   This file is free documentation; i gives unlimited permission
+to copy, distribute and modify it.
+
+Basic Installation
+==================
+
+   Briefly, the shell commands `autoreconf -im; ./configure; make install' should
+prepare, configure, build this package.  The following
+more-detailed instructions are generic; see the `README' file for
+instructions specific to this package.
+
+The simplest way to compile this package is:
+
+  1. `cd' to the directory containing the package's source code and type
+     `autoreconf -im' to generate a script named 'configure'.
+
+     Running `autoreconf -im' might take a while.  While running, it prints
+     some messages telling which script it is installing into source directory.
+
+  2. Type `./configure' to configure the package for your system.
+
+     Running `configure' might take a while.  While running, it prints
+     some messages telling which features it is checking for.
+
+  3. Type `make' to compile the package.
+
+  4. Type `make install' to install the package.
+
