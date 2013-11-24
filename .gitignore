@@ -1,17 +1,10 @@
 ## igonore files to be auto-generated.
 autom4te.cache
-aclocal.m4
-config.h.in
-config.h
-Makefile.in
-depcomp
-install-sh
-missing
-
-configure
 config.log
 config.status
 Makefile
+*~
+vc*.pdb
 
 ## igonore output binaries.
 .deps
@@ -19,7 +12,6 @@ Makefile
 *.lo
 *.o
 *.exe
-stamp-h1
 
 ## igonore files used by Eclipse
 .settings
