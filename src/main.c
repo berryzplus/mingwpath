@@ -19,48 +19,63 @@
 
 #include "mingwpath.h"
 
-typedef struct __mingpath_option {
-	int  code;
-	TCHAR shortName;
-	LPCTSTR longName;
-//	TCHAR description[58];
-} MINGWPATH_OPTION, *LPMINGPATH_OPTION;
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 
 MINGWPATH_OPTION opts[] = {
-	// Output type options:
-	{MF_DOSSHORT,  _T('d'), _T("dos"),			}, // _T("print DOS (short) form of NAME (C:\\PROGRA~1\\)"), },
-	{MF_MIXEDNAME, _T('m'), _T("mixed"),		}, // _T("like --windows, but with regular slashes (C:/WINNT)"), },
-	{MF_UNIXNAME,  _T('u'), _T("unix"),			}, // _T("(default) print Unix form of NAME (/c/winnt)"), },
-	{MF_WINDOWS,   _T('w'), _T("windows"),		}, // _T("print Windows form of NAME (C:\\WINNT)"), },
-	{-1,           _T('t'), _T("type"),			}, // _T("print TYPE form: "dos", "mixed", "unix", or "windows""), },
+	/* Output type options: */
+	{MF_DOSSHORT,  _T('d'), _T("dos"),			}, /* _T("print DOS (short) form of NAME (C:\\PROGRA~1\\)"), }, */
+	{MF_MIXEDNAME, _T('m'), _T("mixed"),		}, /* _T("like --windows, but with regular slashes (C:/WINNT)"), }, */
+	{MF_UNIXNAME,  _T('u'), _T("unix"),			}, /* _T("(default) print Unix form of NAME (/c/winnt)"), }, */
+	{MF_WINDOWS,   _T('w'), _T("windows"),		}, /* _T("print Windows form of NAME (C:\\WINNT)"), }, */
+	{0xFFFF,       _T('t'), _T("type"),			}, /* _T("print TYPE form: "dos", "mixed", "unix", or "windows""), }, */
 
-	// Path conversion options:
-	{OF_ABSOLUTE,  _T('a'), _T("absolute"),		}, // _T("output absolute path"), },
-	{OF_LONGNAME,  _T('l'), _T("long-name"),	}, // _T("print Windows long form of NAME (with -w, -m only)"), },
-	{OF_SHORTNAME, _T('s'), _T("short-name"),	}, // _T("print DOS (short) form of NAME (with -w, -m only)"), },
+	/* Path conversion options: */
+	{OF_ABSOLUTE,  _T('a'), _T("absolute"),		}, /* _T("output absolute path"), }, */
+	{OF_LONGNAME,  _T('l'), _T("long-name"),	}, /* _T("print Windows long form of NAME (with -w, -m only)"), }, */
+	{OF_SHORTNAME, _T('s'), _T("short-name"),	}, /* _T("print DOS (short) form of NAME (with -w, -m only)"), }, */
 
-	// System information:
-	{PF_ALLUSERS,  _T('A'), _T("allusers"),		}, // _T("use `All Users' instead of current user for -D, -P"), },
-	{PF_DESKTOP,   _T('D'), _T("desktop"),		}, // _T("output `Desktop' directory and exit"), },
-	{PF_HOMEROOT,  _T('H'), _T("homeroot"),		}, // _T("output `Profiles' directory (home root) and exit"), },
-	{PF_SMPROGRA,  _T('P'), _T("smprograms"),	}, // _T("output Start Menu `Programs' directory and exit"), },
-	{PF_SYSTEM32,  _T('S'), _T("sysdir"),		}, // _T("output system directory and exit"), },
-	{PF_WINDOWS,   _T('W'), _T("windir"),		}, // _T("output `Windows' directory and exit"), },
+	/* System information: */
+	{PF_ALLUSERS,  _T('A'), _T("allusers"),		}, /* _T("use `All Users' instead of current user for -D, -P"), }, */
+	{PF_DESKTOP,   _T('D'), _T("desktop"),		}, /* _T("output `Desktop' directory and exit"), }, */
+	{PF_HOMEROOT,  _T('H'), _T("homeroot"),		}, /* _T("output `Profiles' directory (home root) and exit"), }, */
+	{PF_SMPROGRA,  _T('P'), _T("smprograms"),	}, /* _T("output Start Menu `Programs' directory and exit"), }, */
+	{PF_SYSTEM32,  _T('S'), _T("sysdir"),		}, /* _T("output system directory and exit"), }, */
+	{PF_WINDOWS,   _T('W'), _T("windir"),		}, /* _T("output `Windows' directory and exit"), }, */
 };
 #define OPT_LEN (sizeof(opts) / sizeof (MINGWPATH_OPTION))
+
+
+extern int 
+convertSeperator(LPTSTR lpszPath, size_t size, TCHAR chSrc, TCHAR chDst);
+extern DWORD
+GetFullPath(LPCTSTR pszPath, LPTSTR *pszBuff);
+extern DWORD
+GetLongPath(LPCTSTR pszPath, LPTSTR *pszBuff);
+extern DWORD
+GetShortPath(LPCTSTR pszPath, LPTSTR *pszBuff);
+extern DWORD
+GetShellFolder(int pathFlag, LPTSTR *pszBuff);
+
+
 
 int _tmain(int argc, TCHAR* argv[]) {
 
 	int n,m,c;
 	int modeFlags = MF_UNIXNAME;
+	size_t len;
+	LPTSTR arg, pType, pszTemp;
 	TCHAR pszPathIn[MAX_PATH + 1];
 
 	pszPathIn[0] = 0;
 
-	for (n=1; n < argc; n++ ) {
+	/** parse args */
+	for (n=1; n < argc; n++) {
 
-		LPTSTR arg = argv[n];
+		arg = argv[n];
 		if (arg[0] == _T('-')) {
 
 			/* parse long option */
@@ -79,7 +94,7 @@ int _tmain(int argc, TCHAR* argv[]) {
 			}
 
 			/* parse type option */
-			LPTSTR pType = _tcschr(arg, _T('t'));
+			pType = _tcschr(arg, _T('t'));
 			if (pType) {
 				if (n + 1 < argc) {
 					/* check type: 'dos', 'mixed', 'unix', or 'windows' */
@@ -114,7 +129,7 @@ int _tmain(int argc, TCHAR* argv[]) {
 				}
 			}
 
-			size_t len = _tcslen(arg);
+			len = _tcslen(arg);
 			for (c=1 ; c < len ; c++) {
 				for (m = 0; m < OPT_LEN; m++) {
 					if (arg[c] == opts[m].shortName) {
@@ -129,19 +144,25 @@ int _tmain(int argc, TCHAR* argv[]) {
 		}
 		else if (!pszPathIn[0]) {
 			/* copy path from parameter. */
-			_tcscpy(pszPathIn, argv[n]);
+			_tcscpy_s(pszPathIn, MAX_PATH + 1, argv[n]);
 		}
 
 	}
 
 	/* mode is print system information. */
-	if (modeFlags & 0xFF00 && GetShellFolderPath(modeFlags, pszPathIn)) {
-		_ftprintf(stderr, _T(PACKAGE_NAME) _T(": cannot query system folder."));
-		return 1;
+	if (modeFlags & 0xFF00) {
+		/* get full path, with auto allocation. */
+		if (!GetShellFolder(modeFlags & 0xFF00, &pszTemp)) {
+			_ftprintf(stderr, _T(PACKAGE_NAME) _T(": cannot query system folder."));
+			return 1;
+		}
+		_tcscpy_s(pszPathIn, MAX_PATH + 1, pszTemp);
+		free(pszTemp);
+		pszTemp = NULL;
 	}
 	/* mode piped input. */
-	else if (!pszPathIn[0] && 0 < _filelengthi64(STDIN_FILENO)) {
-        _fgetts(pszPathIn, sizeof(pszPathIn), stdin);
+	else if (!pszPathIn[0] && 0 < _filelengthi64(_fileno( stdin ))) {
+        _fgetts(pszPathIn, MAX_PATH + 1, stdin);
 	}
 	/* no input. */
 	else if (!pszPathIn[0]) {
@@ -149,103 +170,72 @@ int _tmain(int argc, TCHAR* argv[]) {
 		return 1;
 	}
 
-	/* convert seperater '\\' -> '/'. */
-	convertSeperator(pszPathIn, sizeof(pszPathIn), _T('\\'), _T('/'));
-
-	/* fix style '/c/path/to/dir' -> 'C:/path/to/dir'. */
-	if (pszPathIn[0] == _T('/') && _istlower(pszPathIn[1]) && pszPathIn[2] == _T('/')) {
-		pszPathIn[0] = _totupper(pszPathIn[1]);
-		pszPathIn[1] = _T(':');
-	}
-	/* fix style 'c:/path/to/dir' -> 'C:/path/to/dir'. */
-	else if (_istlower(pszPathIn[0]) && pszPathIn[1] == _T(':')) {
-		pszPathIn[0] = _totupper(pszPathIn[0]);
-	}
 	/* convert to absolute path. */
-	else if (modeFlags & OF_ABSOLUTE) {
+	if (modeFlags & OF_ABSOLUTE) {
 		/* get full path, with auto allocation. */
-		LPTSTR pszTemp = _tfullpath(NULL, pszPathIn, 0);
-		_tcscpy(pszPathIn, pszTemp);
+		pszTemp = _tfullpath(NULL, pszPathIn, 0);
+		_tcscpy_s(pszPathIn, MAX_PATH + 1, pszTemp);
 		free(pszTemp);
-
-		/* convert seperater '\\' -> '/'. */
-		convertSeperator(pszPathIn, sizeof(pszPathIn), _T('\\'), _T('/'));
+		pszTemp = NULL;
 	}
 
-	TCHAR pszPathOut[MAX_PATH + 1];
-
-	/* mode 'm' or 'w' only. */
-	if (modeFlags & 4) {
-
-		/* mode is print dos filename. */
-		if (modeFlags & OF_SHORTNAME
-			&& !GetShortPathName(pszPathIn, pszPathOut, sizeof(pszPathOut))) {
+	/* mode is print dos filename. */
+	if (modeFlags & OF_SHORTNAME) {
+		if (!GetShortPath(pszPathIn, &pszTemp)) {
 			_ftprintf(stderr, _T(PACKAGE_NAME) _T(": cannot create short name of %s."), pszPathIn);
 			return 1;
 		}
-		else if (modeFlags & OF_LONGNAME
-			&& !GetLongPathName(pszPathIn, pszPathOut, sizeof(pszPathOut))) {
+		_tcscpy_s(pszPathIn, MAX_PATH + 1, pszTemp);
+		free(pszTemp);
+		pszTemp = NULL;
+	}
+
+	/* mode is print windows(long) filename. */
+	if (modeFlags & OF_SHORTNAME) {
+		if (modeFlags & OF_LONGNAME && !GetLongPath(pszPathIn, &pszTemp)) {
 			_ftprintf(stderr, _T(PACKAGE_NAME) _T(": cannot create long name of %s."), pszPathIn);
 			return 1;
 		}
-		else {
-			_tcscpy(pszPathOut, pszPathIn);
-		}
+		_tcscpy_s(pszPathIn, MAX_PATH + 1, pszTemp);
+		free(pszTemp);
+		pszTemp = NULL;
 	}
-	/* mode 'unix' and starts with 'C:'. */
-	else if (_istalpha(pszPathIn[0]) && pszPathIn[1] == _T(':')) {
 
-		/* get Bash root from ENV ( C:/MinGW/msys/1.0 ). */
-		TCHAR pszBashRoot[MAX_PATH + 1];
-		if (getBashRoot(pszBashRoot, sizeof(pszBashRoot))) {
-			_ftprintf(stderr, _T(PACKAGE_NAME) _T(": unknown error, you may not using mingw."));
-			return 1;
+	/* mode 'windows' or 'dos'. */
+	if (modeFlags & 2) {
+		/* fix style '/c/path/to/dir' -> 'C:/path/to/dir'. */
+		if (_istlower(pszPathIn[1]) && 
+			(pszPathIn[0] == _T('/') || pszPathIn[0] == _T('\\')) && 
+			(pszPathIn[2] == _T('/') || pszPathIn[2] == _T('\\'))) {
+			pszPathIn[0] = _totupper(pszPathIn[1]);
+			pszPathIn[1] = _T(':');
+			/* pszPathIn[2] = _T('\\'); */
 		}
-
-		/* get a length of bash root directory.  */
-		size_t rootLength = _tcslen(pszBashRoot);
-
-		LPTSTR pszTemp;
-
-		/* fix bash root. */
-		if (_tcsstr(pszPathIn, pszBashRoot) == pszPathIn) {
-
-			pszTemp = &pszPathIn[rootLength];
-
-			if (*pszTemp == 0 || (*pszTemp == _T('/') && *(pszTemp + 1) == 0)) {
-				_tcscpy(pszPathOut, _T("/"));
-			}
-			else if (*pszTemp == _T('/')) {
-				if (_tcsstr(++pszTemp, _T("etc")) == pszTemp
-					|| _tcsstr(pszTemp, _T("home")) == pszTemp
-					|| _tcsstr(pszTemp, _T("var")) == pszTemp
-				) {
-					_tcscpy(pszPathOut, --pszTemp);
-				}
-				else {
-					_tcscpy(pszPathOut, _T("/usr"));
-					_tcscpy(&pszPathOut[4], --pszTemp);
-				}
-			}
-			else {
-				_tcscpy(pszPathOut, pszPathIn);
-			}
+		/* fix style 'c:/path/to/dir' -> 'C:/path/to/dir'. */
+		else if (_istlower(pszPathIn[0]) && pszPathIn[1] == _T(':')) {
+			pszPathIn[0] = _totupper(pszPathIn[0]);
 		}
-		else {
+		/* convert '/' -> '\\'. */
+		convertSeperator(pszPathIn, MAX_PATH + 1, _T('/'), _T('\\'));
+	}
+	/* mode 'mixed' or 'unix'. */
+	else {
+		/* mode 'unix' and starts with 'C:'. */
+		if (!(modeFlags & 4) && _istalpha(pszPathIn[0]) && pszPathIn[1] == _T(':')) {
 			pszPathIn[1] = _totlower(pszPathIn[0]);
 			pszPathIn[0] = _T('/');
-			_tcscpy(pszPathOut, pszPathIn);
 		}
-	}
-
-	/* convert '/' -> '\\'. */
-	if (modeFlags & 2) {
-		convertSeperator(pszPathOut, sizeof(pszPathOut), _T('/'), _T('\\'));
+		/* convert seperater '\\' -> '/'. */
+		convertSeperator(pszPathIn, MAX_PATH + 1, _T('\\'), _T('/'));
 	}
 
 	/* generate final output. */
-	_ftprintf(stdout, pszPathOut);
+	_ftprintf(stdout, pszPathIn);
 
     return 0;
 }
 
+
+#ifdef __cplusplus
+}
+#endif

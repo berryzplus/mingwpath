@@ -64,10 +64,15 @@
 #endif
 
 
-
-#if _UNICODE
+#ifdef _UNICODE
 #define UNICODE 1
 #endif
+
+#include <string.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <tchar.h>
+
 
 #if !defined(_WIN32_WINNT)
 #define _WIN32_WINNT_WINXP  0x0501
@@ -78,14 +83,7 @@
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 
-#include <string.h>
-#include <stdlib.h>
-#include <stdio.h>
-#include <tchar.h>
-
 #ifndef _SHLOBJ_H
 #include <shlobj.h>
 #endif
-
-
 

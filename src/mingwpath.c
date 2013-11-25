@@ -19,7 +19,11 @@
 
 #include "mingwpath.h"
 
-BOOL SHGetFolderPathSimple(int nFolder, LPTSTR pszPath);
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 
 int convertSeperator(LPTSTR lpszPath, size_t size, TCHAR chSrc, TCHAR chDst) {
 	int c = 0;
@@ -33,7 +37,7 @@ int convertSeperator(LPTSTR lpszPath, size_t size, TCHAR chSrc, TCHAR chDst) {
 	return ret;
 }
 
-int inline appendChar(LPTSTR pszBuff, size_t buffLength, TCHAR ch) {
+int appendChar(LPTSTR pszBuff, size_t buffLength, TCHAR ch) {
 	LPTSTR pszTemp = _tcschr(pszBuff, 0);
 	*pszTemp = ch;
 	pszTemp++;
@@ -41,64 +45,54 @@ int inline appendChar(LPTSTR pszBuff, size_t buffLength, TCHAR ch) {
 	return 0;
 }
 
-int getBashRoot(LPTSTR pszBashRoot, size_t buffLength) {
-
-	LPTSTR pszTemp;
-
-	if (!GetEnvironmentVariable(_T("WD"), pszBashRoot, buffLength)) {
-		return 1;
+DWORD
+GetFullPath(LPCTSTR pszPath, LPTSTR *pszBuff) {
+	DWORD dwLength = 0;
+	dwLength = GetFullPathName(pszPath, 0, NULL, NULL);
+	if (0 < dwLength) {
+		*pszBuff = (LPTSTR) malloc(sizeof(TCHAR) * dwLength);
+		dwLength = GetFullPathName(pszPath, dwLength, *pszBuff, NULL);
+		if (!dwLength) {
+			free( *pszBuff );
+			*pszBuff = NULL;
+		}
 	}
-
-	/* fix style 'C:\\MinGW\\msys\\1.0\\\\bin\\' -> 'C:\\MinGW\\msys\\1.0\\bin\\'. */
-	if (_tcsstr(pszBashRoot, _T("\\\\"))){
-		pszTemp = _tfullpath(NULL, pszBashRoot, 0);
-		_tcscpy(pszBashRoot, pszTemp);
-		free(pszTemp);
-	}
-
-	/* fix style 'C:\\MinGW\\msys\\1.0\\bin\\' -> 'C:/MinGW/msys/1.0'. */
-	if (pszTemp = _tcsstr(pszBashRoot, _T("\\bin\\"))) {
-		*pszTemp = 0;
-	}
-
-	/* convert seperater '\\' -> '/'. */
-	convertSeperator(pszBashRoot, buffLength, _T('\\'), _T('/'));
-
-	return 0;
+	return dwLength;
 }
 
 
-int GetShellFolderPath(int pathFlags, LPTSTR pszPath) {
-
-	int nFolder;
-
-	if (pathFlags & PF_ALLUSERS) {
-		if (pathFlags & PF_DESKTOP) {
-			nFolder = CSIDL_COMMON_DESKTOPDIRECTORY;
-		}
-		else if (pathFlags & PF_SMPROGRA) {
-			nFolder = CSIDL_COMMON_PROGRAMS;
-		}
-		else {
-			return 1;
+DWORD
+GetLongPath(LPCTSTR pszPath, LPTSTR *pszBuff) {
+	DWORD dwLength = 0;
+	dwLength = GetLongPathName(pszPath, NULL, 0);
+	if (0 < dwLength) {
+		*pszBuff = (LPTSTR) malloc(sizeof(TCHAR) * dwLength);
+		dwLength = GetLongPathName(pszPath, *pszBuff, dwLength);
+		if (!dwLength) {
+			free( *pszBuff );
+			*pszBuff = NULL;
 		}
 	}
-	else if (pathFlags & PF_DESKTOP) {
-		nFolder = CSIDL_DESKTOPDIRECTORY;
-	}
-	else if (pathFlags & PF_SMPROGRA) {
-		nFolder = CSIDL_PROGRAMS;
-	}
-	else if (pathFlags & PF_SYSTEM32) {
-		nFolder = CSIDL_SYSTEM;
-	}
-	else if (pathFlags & PF_WINDOWS) {
-		nFolder = CSIDL_WINDOWS;
-	}
-	else {
-		return 1;
-	}
-
-	return !SHGetFolderPathSimple(nFolder, pszPath);
+	return dwLength;
 }
 
+
+DWORD
+GetShortPath(LPCTSTR pszPath, LPTSTR *pszBuff) {
+	DWORD dwLength = 0;
+	dwLength = GetShortPathName(pszPath, NULL, 0);
+	if (0 < dwLength) {
+		*pszBuff = (LPTSTR) malloc(sizeof(TCHAR) * dwLength);
+		dwLength = GetShortPathName(pszPath, *pszBuff, dwLength);
+		if (!dwLength) {
+			free( *pszBuff );
+			*pszBuff = NULL;
+		}
+	}
+	return dwLength;
+}
+
+
+#ifdef __cplusplus
+}
+#endif

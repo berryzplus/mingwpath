@@ -17,9 +17,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#if HAVE_CONFIG_H
 #include "config.h"
-#endif
+
 
 #define MF_UNIXNAME		0x0000
 #define MF_MIXEDNAME	0x0004
@@ -34,12 +33,13 @@
 #define PF_DESKTOP		0x0100
 #define PF_HOMEROOT		0x0800
 #define PF_SMPROGRA		0x0200
-#define PF_SYSTEM32		0x3000
+#define PF_SYSTEM32		0x4000
 #define PF_WINDOWS		0x2000
 
-int _tmain(int argc, TCHAR* argv[]);
-int convertSeperator(LPTSTR lpszPath, size_t size, TCHAR chSrc, TCHAR chDst);
-int getBashRoot(LPTSTR pszBashRoot, size_t buffLength);
-int GetShellFolderPath(int pathFlags, LPTSTR pszPath);
-BOOL SHGetFolderPathSimple(int nFolder, LPTSTR pszPath);
 
+typedef struct __mingpath_option {
+	int  code;
+	TCHAR shortName;
+	LPCTSTR longName;
+/* TCHAR description[58]; */
+} MINGWPATH_OPTION, *LPMINGPATH_OPTION;

@@ -1,7 +1,7 @@
 dnl Process this file with autoconf to produce a configure script.
 
 AC_PREREQ([2.68])
-AC_INIT([mingwpath], [0.11], [berryzplus@gmail.com])
+AC_INIT([mingwpath], [0.20], [berryzplus@gmail.com])
 AC_CONFIG_HEADERS([config.h])
 AC_CONFIG_SRCDIR([src/mingwpath.c])
 AC_CONFIG_MACRO_DIR([m4])
@@ -37,10 +37,15 @@ if test $ac_cv_with_unicode = yes; then
 fi
 
 AH_BOTTOM([
-
-#if _UNICODE
+#ifdef _UNICODE
 #define UNICODE 1
 #endif
+
+#include <string.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <tchar.h>
+
 
 #if !defined(_WIN32_WINNT)
 #define _WIN32_WINNT_WINXP  0x0501
@@ -51,16 +56,10 @@ AH_BOTTOM([
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 
-#include <string.h>
-#include <stdlib.h>
-#include <stdio.h>
-#include <tchar.h>
-
 #ifndef _SHLOBJ_H
 #include <shlobj.h>
 #endif
-
-
 ])
+
 AC_CONFIG_FILES(Makefile)
 AC_OUTPUT

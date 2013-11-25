@@ -4,4 +4,5 @@ ACLOCAL_AMFLAGS = -I m4
 
 # Build a executable for installation in bindir.
 bin_PROGRAMS = mingwpath
-mingwpath_SOURCES = src/mingwpath.c src/shellfolders.c src/wmain.c src/main.c
+mingwpath_SOURCES = src/main.c src/mingwpath.c src/shellfolders.c src/mingwpath.h config.h
+
