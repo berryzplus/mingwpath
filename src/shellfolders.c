@@ -41,10 +41,12 @@ DWORD
 GetShellFolder(int pathFlags, LPTSTR *pszBuff) {
 
 	int nFolder = 0;
-    HRESULT hr = 0;
+    HRESULT hr = E_FAIL;
 	DWORD dwLength = 0;
     HMODULE hDLL   = NULL;
     PROC_SH_GFP pfnSHGetFolderPath = NULL;
+
+	*pszBuff = 0;
 
 	if (pathFlags & PF_ALLUSERS) {
 		if (pathFlags & PF_DESKTOP) {
@@ -54,6 +56,7 @@ GetShellFolder(int pathFlags, LPTSTR *pszBuff) {
 			nFolder = CSIDL_COMMON_PROGRAMS;
 		}
 		else {
+			_ftprintf(stderr, _T(PACKAGE_NAME) _T(": not supported!"));
 			return 0;
 		}
 	}
@@ -73,10 +76,9 @@ GetShellFolder(int pathFlags, LPTSTR *pszBuff) {
 		nFolder = CSIDL_WINDOWS;
 	}
 	else {
+		_ftprintf(stderr, _T(PACKAGE_NAME) _T(": not supported!"));
 		return 0;
 	}
-
-	*pszBuff = 0;
 
 	hDLL = LoadLibrary(_T(SHELL32DLL));
     if (hDLL) {
@@ -92,6 +94,7 @@ GetShellFolder(int pathFlags, LPTSTR *pszBuff) {
 		dwLength = (DWORD) (_tcslen(*pszBuff) + 1);
 	}
 	else if (*pszBuff) {
+		_ftprintf(stderr, _T(PACKAGE_NAME) _T(": cannot query system folder."));
 		free(*pszBuff);
 		*pszBuff = NULL;
 	}

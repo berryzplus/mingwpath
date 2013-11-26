@@ -1,7 +1,7 @@
 dnl Process this file with autoconf to produce a configure script.
 
 AC_PREREQ([2.68])
-AC_INIT([mingwpath], [0.20], [berryzplus@gmail.com])
+AC_INIT([mingwpath], [0.50], [berryzplus@gmail.com])
 AC_CONFIG_HEADERS([config.h])
 AC_CONFIG_SRCDIR([src/mingwpath.c])
 AC_CONFIG_MACRO_DIR([m4])
@@ -43,6 +43,7 @@ AH_BOTTOM([
 
 #include <string.h>
 #include <stdlib.h>
+#include <io.h>
 #include <stdio.h>
 #include <tchar.h>
 

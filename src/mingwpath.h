@@ -41,5 +41,8 @@ typedef struct __mingpath_option {
 	int  code;
 	TCHAR shortName;
 	LPCTSTR longName;
-/* TCHAR description[58]; */
+	LPCTSTR description;
 } MINGWPATH_OPTION, *LPMINGPATH_OPTION;
+
+
+#define BUFFER_LENGTH	4096

@@ -24,10 +24,173 @@
 extern "C" {
 #endif
 
+/* available option set. */
+MINGWPATH_OPTION opts[] = {
+	/* Output type options: */
+	{MF_DOSSHORT,  _T('d'), _T("dos"),			_T("print DOS (short) form of NAME (C:\\PROGRA~1\\)"), },
+	{MF_MIXEDNAME, _T('m'), _T("mixed"),		_T("like --windows, but with regular slashes (C:/WINNT)"), },
+	{MF_UNIXNAME,  _T('u'), _T("unix"),			_T("(default) print Unix form of NAME (/c/winnt)"), },
+	{MF_WINDOWS,   _T('w'), _T("windows"),		_T("print Windows form of NAME (C:\\WINNT)"), },
+	{0xFFFF,       _T('t'), _T("type"),			_T("form: \"dos\", \"mixed\", \"unix\", or \"windows\""), },
 
+	/* Path conversion options: */
+	{OF_ABSOLUTE,  _T('a'), _T("absolute"),		_T("output absolute path"), },
+	{OF_LONGNAME,  _T('l'), _T("long-name"),	_T("print Windows long form of NAME (with -w, -m only)"), },
+	{OF_SHORTNAME, _T('s'), _T("short-name"),	_T("print DOS (short) form of NAME (with -w, -m only)"), },
+
+	/* System information: */
+	{PF_ALLUSERS,  _T('A'), _T("allusers"),		_T("use `All Users' instead of current user for -D, -P"), },
+	{PF_DESKTOP,   _T('D'), _T("desktop"),		_T("output `Desktop' directory and exit"), },
+	{PF_HOMEROOT,  _T('H'), _T("homeroot"),		_T("output `Profiles' directory (home root) and exit"), },
+	{PF_SMPROGRA,  _T('P'), _T("smprograms"),	_T("output Start Menu `Programs' directory and exit"), },
+	{PF_SYSTEM32,  _T('S'), _T("sysdir"),		_T("output system directory and exit"), },
+	{PF_WINDOWS,   _T('W'), _T("windir"),		_T("output `Windows' directory and exit"), },
+};
+
+#define OPT_LEN (sizeof(opts) / sizeof (MINGWPATH_OPTION))
+
+
+extern DWORD
+GetShellFolder(int pathFlag, LPTSTR *pszBuff);
+
+
+int
+parseArgs(int *pModeFlags, LPTSTR pszPath,int argc, TCHAR* argv[]) {
+	int n,m,c,modeFlags,typeDefined;
+	size_t len;
+	LPTSTR arg, pType, pszTemp;
+
+	modeFlags = *pModeFlags = MF_UNIXNAME;
+	typeDefined = 0;
+	pszPath[0] = 0;
+
+	/** parse args */
+	for (n=1; n < argc; n++) {
+
+		arg = argv[n];
+		if (arg[0] == _T('-')) {
+			/* parse long option */
+			if (arg[1] == _T('-')) {
+				/* convert long option to short option */
+				for (m = 0; m < OPT_LEN; m++) {
+					if (!_tcscmp(&arg[2], opts[m].longName)) {
+						arg[1] = opts[m].shortName;
+						break;
+					}
+				}
+				if (arg[1] == _T('-')) {
+					_ftprintf(stderr, _T(PACKAGE_NAME) _T(": unknown option '%s'."), arg);
+					return 1;
+				}
+				arg[2] = 0;
+				continue;
+			}
+			/* parse short option */
+			len = _tcslen(arg);
+			for (c=1 ; c < len ; c++) {
+				/* parse type option */
+				if (arg[c] == _T('t')) {
+					/* type has already be defined */
+					if (typeDefined) {
+						_ftprintf(stderr, _T(PACKAGE_NAME) _T(": type can be set once!"));
+						return 1;
+					}
+					pType = &arg[c];
+					if (n + 1 < argc) {
+						/* check type: 'dos', 'mixed', 'unix', or 'windows' */
+						for (m = 0; m < OPT_LEN; m++) {
+							if (!_tcscmp(argv[n + 1], opts[m].longName)) {
+								pType[0] = opts[m].shortName;
+								break;
+							}
+							if (opts[m].shortName == _T('t')) {
+								break;
+							}
+						}
+						n++;
+					}
+					/* no type */
+					else {
+						_ftprintf(stderr, _T(PACKAGE_NAME) _T(": type TYPE missing."));
+						return 1;
+					}
+					/* invalid type */
+					if (pType[0] == _T('t')) {
+						_ftprintf(stderr, _T(PACKAGE_NAME) _T(": unknown type '%s'."), argv[n + 1]);
+						return 1;
+					}
+				}
+				/* convert short option to mode flags */
+				for (m = 0; m < OPT_LEN; m++) {
+					if (arg[c] == opts[m].shortName) {
+						modeFlags |= opts[m].code;
+						break;
+					}
+				}
+			}
+		}
+		else {
+			/* copy path from parameter. */
+			pszTemp = pszPath;
+			for (m = n; m < argc; m++) {
+				arg = argv[m];
+				_tcscpy_s(pszTemp, BUFFER_LENGTH - (size_t) (pszTemp - pszPath) * sizeof(TCHAR), arg);
+				if (m + 1 < argc) {
+					len = _tcslen(pszTemp);
+					pszTemp[len] = 0x20;
+					pszTemp = (LPTSTR) ((size_t) pszTemp + len * sizeof(TCHAR));
+				}
+			}
+			break;
+		}
+	}
+
+	/* mode is print system information. */
+	if (modeFlags & 0xFF00) {
+		/* get full path, with auto allocation. */
+		if (!GetShellFolder(modeFlags & 0xFF00, &pszTemp)) {
+			return 1;
+		}
+		_tcscpy_s(pszPath, BUFFER_LENGTH, pszTemp);
+		free(pszTemp);
+		pszTemp = NULL;
+	}
+	/* mode piped input. */
+	else if (!pszPath[0] && 0 < _filelengthi64(_fileno( stdin ))) {
+        _fgetts(pszPath, BUFFER_LENGTH, stdin);
+		len = _tcslen(pszPath);
+		if (0 < len) {
+			pszPath[len - 1] = 0;
+		}
+	}
+	/* no input. */
+	else if (!pszPath[0]) {
+		_ftprintf(stderr, _T("%s version %s(built on %s)\n\n"), 
+			_T(PACKAGE_NAME), _T(PACKAGE_VERSION), _T(__DATE__) _T(" ") _T(__TIME__));
+		_ftprintf(stderr, _T(" available options:\n"));
+		/* convert short option to mode flags */
+		for (m = 0; m < OPT_LEN; m++) {
+			if (opts[m].shortName == _T('t')) {
+				_ftprintf(stderr, _T("  -%c, --%s TYPE    %s.\n"), 
+					opts[m].shortName, opts[m].longName, opts[m].description);
+			}
+			else {
+				_ftprintf(stderr, _T("  -%c, --%-12s %s.\n"), 
+					opts[m].shortName, opts[m].longName, opts[m].description);
+			}
+		}
+		return 1;
+	}
+
+	*pModeFlags = modeFlags;
+
+	return 0;
+}
+
+	
 int convertSeperator(LPTSTR lpszPath, size_t size, TCHAR chSrc, TCHAR chDst) {
-	int c = 0;
 	int ret = 0;
+	int c = 0;
 	for (c=0 ; c < size ; c++) {
 		if (lpszPath[c] == chSrc) {
 			lpszPath[c] = chDst;
@@ -37,29 +200,28 @@ int convertSeperator(LPTSTR lpszPath, size_t size, TCHAR chSrc, TCHAR chDst) {
 	return ret;
 }
 
-int appendChar(LPTSTR pszBuff, size_t buffLength, TCHAR ch) {
-	LPTSTR pszTemp = _tcschr(pszBuff, 0);
-	*pszTemp = ch;
-	pszTemp++;
-	*pszTemp = 0;
+
+int
+getBashRoot(LPTSTR pszBashRoot, size_t buffLength) {
+	LPTSTR pszTemp, pszTemp2;
+
+	/* get the path of sh.exe */
+	pszTemp = (LPTSTR) malloc(buffLength * sizeof(TCHAR));
+	SearchPath(NULL, _T("sh"), _T(".exe"), (DWORD) buffLength, pszTemp, NULL);
+
+	/* cut '\\bin\\sh.exe'. */
+	pszTemp2 = _tcsstr(pszTemp, _T("\\bin\\sh.exe"));
+	pszTemp2[0] = 0;
+
+	/* copy to allocated buffer. */
+	_tcscpy_s(pszBashRoot, BUFFER_LENGTH, pszTemp);
+	free(pszTemp);
+
+	/* convert seperater '\\' -> '/'. */
+	convertSeperator(pszBashRoot, buffLength, _T('\\'), _T('/'));
+
 	return 0;
 }
-
-DWORD
-GetFullPath(LPCTSTR pszPath, LPTSTR *pszBuff) {
-	DWORD dwLength = 0;
-	dwLength = GetFullPathName(pszPath, 0, NULL, NULL);
-	if (0 < dwLength) {
-		*pszBuff = (LPTSTR) malloc(sizeof(TCHAR) * dwLength);
-		dwLength = GetFullPathName(pszPath, dwLength, *pszBuff, NULL);
-		if (!dwLength) {
-			free( *pszBuff );
-			*pszBuff = NULL;
-		}
-	}
-	return dwLength;
-}
-
 
 DWORD
 GetLongPath(LPCTSTR pszPath, LPTSTR *pszBuff) {
