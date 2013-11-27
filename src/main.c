@@ -25,133 +25,47 @@ extern "C" {
 #endif
 
 
-
-int
-parseArgs(int *pModeFlags, LPTSTR pszPath,int argc, TCHAR* argv[]);
-extern int 
-convertSeperator(LPTSTR lpszPath, size_t size, TCHAR chSrc, TCHAR chDst);
-extern int
-getBashRoot(LPTSTR pszBashRoot, size_t buffLength);
-extern DWORD
-GetLongPath(LPCTSTR pszPath, LPTSTR *pszBuff);
-extern DWORD
-GetShortPath(LPCTSTR pszPath, LPTSTR *pszBuff);
+void printHelp();
+int  parseArg(int *pModeFlags, LPTSTR pszPath, int argc, TCHAR* argv[]);
+int  convPath(int modeFlags, LPTSTR pszPath, LPTSTR pszRoot);
 
 
 int _tmain(int argc, TCHAR* argv[]) {
 
-	int modeFlags = MF_UNIXNAME;
-	LPTSTR pszPath, pszTemp, pszBashRoot;
-	size_t len;
+	int ret, modeFlags;
+	LPTSTR pszPath, pszRoot;
 
+	/** print help */
+	if (argc < 2 || !_tcscmp(argv[1], _T("-h"))) {
+		printHelp();
+		return 0;
+	}
+
+	/* allocate buffer for input. */
 	pszPath = (LPTSTR) malloc(BUFFER_LENGTH * sizeof(TCHAR));
 
 	/** parse args */
-	if (parseArgs(&modeFlags, (LPTSTR) pszPath, argc, argv)) {
-		return 1;
+	modeFlags = MF_UNIXNAME;
+	ret = parseArg(&modeFlags, pszPath, argc, argv);
+	if (!ret) {
+		/* allocate buffer for virtual unix root. */
+		pszRoot = (LPTSTR) malloc(BUFFER_LENGTH * sizeof(TCHAR));
+
+		/* execute conversion phase. */
+		ret = convPath(modeFlags, pszPath, pszRoot);
+		if (!ret) {
+			/* generate final output. */
+			_ftprintf(stdout, pszPath);
+		}
+
+		/* free buffer for virtual unix root. */
+		free(pszRoot);
 	}
 
-	/* convert to absolute path. */
-	if (modeFlags & OF_ABSOLUTE) {
-		/* get full path, with auto allocation. */
-		pszTemp = _tfullpath(NULL, pszPath, 0);
-		_tcscpy_s(pszPath, BUFFER_LENGTH, pszTemp);
-		free(pszTemp);
-		pszTemp = NULL;
-	}
+	/* free buffer for input. */
+	free(pszPath);
 
-	/* get Bash root from ENV ( C:/MinGW/msys/1.0 ). */
-	pszBashRoot = (LPTSTR) malloc(BUFFER_LENGTH * sizeof(TCHAR));
-	if (getBashRoot(pszBashRoot, BUFFER_LENGTH)) {
-		_ftprintf(stderr, _T(PACKAGE_NAME) _T(": unknown error, you may not using mingw."));
-		return 1;
-	}
-
-	/* mode is print windows(long) filename. */
-	if (modeFlags & OF_LONGNAME) {
-		if (!GetLongPath(pszPath, &pszTemp)) {
-			_ftprintf(stderr, _T(PACKAGE_NAME) _T(": cannot create long name of %s."), pszPath);
-			return 1;
-		}
-		_tcscpy_s(pszPath, BUFFER_LENGTH, pszTemp);
-		if (!GetLongPath(pszBashRoot, &pszTemp)) {
-			_ftprintf(stderr, _T(PACKAGE_NAME) _T(": cannot create long name of %s."), pszBashRoot);
-			return 1;
-		}
-		_tcscpy_s(pszBashRoot, BUFFER_LENGTH, pszTemp);
-		free(pszTemp);
-		pszTemp = NULL;
-	}
-
-	/* mode is print dos filename. */
-	if (modeFlags & OF_SHORTNAME) {
-		if (!GetShortPath(pszPath, &pszTemp)) {
-			_ftprintf(stderr, _T(PACKAGE_NAME) _T(": cannot create short name of %s."), pszPath);
-			return 1;
-		}
-		_tcscpy_s(pszPath, BUFFER_LENGTH, pszTemp);
-		if (!GetShortPath(pszBashRoot, &pszTemp)) {
-			_ftprintf(stderr, _T(PACKAGE_NAME) _T(": cannot create short name of %s."), pszBashRoot);
-			return 1;
-		}
-		_tcscpy_s(pszBashRoot, BUFFER_LENGTH, pszTemp);
-		free(pszTemp);
-		pszTemp = NULL;
-	}
-
-	/* if the path starts with bash root. */
-	if (_tcsstr(pszPath, pszBashRoot) == pszPath) {
-		/* fix bash root. */
-		len = _tcslen(pszPath);
-		if (len == _tcslen(pszBashRoot)) {
-			pszPath[len + 0] = '\\';
-			pszPath[len + 1] = '\0';
-		}
-	}
-
-	/* mode 'windows' or 'dos'. */
-	if (modeFlags & 2) {
-		/* fix style '/c/path/to/dir' -> 'C:/path/to/dir'. */
-		if (_istalpha(pszPath[1]) && 
-			(pszPath[0] == _T('/') || pszPath[0] == _T('\\')) && 
-			(pszPath[2] == _T('/') || pszPath[2] == _T('\\'))) {
-			pszPath[0] = _totupper(pszPath[1]);
-			pszPath[1] = _T(':');
-			/* pszPath[2] = _T('\\'); */
-		}
-		/* fix style 'c:/path/to/dir' -> 'C:/path/to/dir'. */
-		else if (_istlower(pszPath[0]) && pszPath[1] == _T(':')) {
-			pszPath[0] = _totupper(pszPath[0]);
-		}
-		/* convert '/' -> '\\'. */
-		convertSeperator(pszPath, BUFFER_LENGTH, _T('/'), _T('\\'));
-	}
-	/* mode 'mixed' or 'unix'. */
-	else {
-		/* mode 'unix'. */
-		if (!(modeFlags & 4)) {
-			/* if the path starts with bash root. */
-			if (_tcsstr(pszPath, pszBashRoot) == pszPath) {
-				/* fix bash root. */
-				len = _tcslen(pszBashRoot);
-				pszTemp = (LPTSTR) ((size_t) pszPath + len * sizeof(TCHAR));
-				_tcscpy_s(pszBashRoot, BUFFER_LENGTH, pszTemp);
-				_tcscpy_s(pszPath, BUFFER_LENGTH, pszBashRoot);
-			}
-			/* mode 'unix' and starts with 'C:'. */
-			if (!(modeFlags & 4) && _istalpha(pszPath[0]) && pszPath[1] == _T(':')) {
-				pszPath[1] = _totlower(pszPath[0]);
-				pszPath[0] = _T('/');
-			}
-		}
-		/* convert seperater '\\' -> '/'. */
-		convertSeperator(pszPath, BUFFER_LENGTH, _T('\\'), _T('/'));
-	}
-
-	/* generate final output. */
-	_ftprintf(stdout, pszPath);
-
-    return 0;
+    return ret;
 }
 
 

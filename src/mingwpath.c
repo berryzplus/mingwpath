@@ -54,8 +54,27 @@ extern DWORD
 GetShellFolder(int pathFlag, LPTSTR *pszBuff);
 
 
+void printHelp() {
+	int n;
+	_ftprintf(stderr, _T("%s version %s(built on %s)\n\n"), 
+		_T(PACKAGE_NAME), _T(PACKAGE_VERSION), _T(__DATE__) _T(" ") _T(__TIME__));
+	_ftprintf(stderr, _T(" available options:\n"));
+	/* convert short option to mode flags */
+	for (n = 0; n < OPT_LEN; n++) {
+		if (opts[n].shortName == _T('t')) {
+			_ftprintf(stderr, _T("  -%c, --%s TYPE    %s.\n"), 
+				opts[n].shortName, opts[n].longName, opts[n].description);
+		}
+		else {
+			_ftprintf(stderr, _T("  -%c, --%-12s %s.\n"), 
+				opts[n].shortName, opts[n].longName, opts[n].description);
+		}
+	}
+}
+
+
 int
-parseArgs(int *pModeFlags, LPTSTR pszPath,int argc, TCHAR* argv[]) {
+parseArg(int *pModeFlags, LPTSTR pszPath,int argc, TCHAR* argv[]) {
 	int n,m,c,modeFlags,typeDefined;
 	size_t len;
 	LPTSTR arg, pType, pszTemp;
@@ -165,20 +184,8 @@ parseArgs(int *pModeFlags, LPTSTR pszPath,int argc, TCHAR* argv[]) {
 	}
 	/* no input. */
 	else if (!pszPath[0]) {
-		_ftprintf(stderr, _T("%s version %s(built on %s)\n\n"), 
-			_T(PACKAGE_NAME), _T(PACKAGE_VERSION), _T(__DATE__) _T(" ") _T(__TIME__));
-		_ftprintf(stderr, _T(" available options:\n"));
-		/* convert short option to mode flags */
-		for (m = 0; m < OPT_LEN; m++) {
-			if (opts[m].shortName == _T('t')) {
-				_ftprintf(stderr, _T("  -%c, --%s TYPE    %s.\n"), 
-					opts[m].shortName, opts[m].longName, opts[m].description);
-			}
-			else {
-				_ftprintf(stderr, _T("  -%c, --%-12s %s.\n"), 
-					opts[m].shortName, opts[m].longName, opts[m].description);
-			}
-		}
+		_ftprintf(stderr, _T(PACKAGE_NAME) _T(": no input\n\n"));
+		printHelp();
 		return 1;
 	}
 
@@ -202,7 +209,7 @@ int convertSeperator(LPTSTR lpszPath, size_t size, TCHAR chSrc, TCHAR chDst) {
 
 
 int
-getBashRoot(LPTSTR pszBashRoot, size_t buffLength) {
+getRoot(LPTSTR pszBashRoot, size_t buffLength) {
 	LPTSTR pszTemp, pszTemp2;
 
 	/* get the path of sh.exe */
@@ -252,6 +259,112 @@ GetShortPath(LPCTSTR pszPath, LPTSTR *pszBuff) {
 		}
 	}
 	return dwLength;
+}
+
+
+int
+convPath(int modeFlags, LPTSTR pszPath, LPTSTR pszRoot) {
+
+	LPTSTR pszTemp;
+	size_t len;
+
+	/* convert to absolute path. */
+	if (modeFlags & OF_ABSOLUTE) {
+		/* get full path, with auto allocation. */
+		pszTemp = _tfullpath(NULL, pszPath, 0);
+		_tcscpy_s(pszPath, BUFFER_LENGTH, pszTemp);
+		free(pszTemp);
+		pszTemp = NULL;
+	}
+
+	/* get Bash root from ENV ( C:/MinGW/msys/1.0 ). */
+	if (getRoot(pszRoot, BUFFER_LENGTH)) {
+		_ftprintf(stderr, _T(PACKAGE_NAME) _T(": unknown error, you may not using mingw."));
+		return 1;
+	}
+
+	/* mode is print windows(long) filename. */
+	if (modeFlags & OF_LONGNAME) {
+		if (!GetLongPath(pszPath, &pszTemp)) {
+			_ftprintf(stderr, _T(PACKAGE_NAME) _T(": cannot create long name of %s."), pszPath);
+			return 1;
+		}
+		_tcscpy_s(pszPath, BUFFER_LENGTH, pszTemp);
+		if (!GetLongPath(pszRoot, &pszTemp)) {
+			_ftprintf(stderr, _T(PACKAGE_NAME) _T(": cannot create long name of %s."), pszRoot);
+			return 1;
+		}
+		_tcscpy_s(pszRoot, BUFFER_LENGTH, pszTemp);
+		free(pszTemp);
+		pszTemp = NULL;
+	}
+
+	/* mode is print dos filename. */
+	if (modeFlags & OF_SHORTNAME) {
+		if (!GetShortPath(pszPath, &pszTemp)) {
+			_ftprintf(stderr, _T(PACKAGE_NAME) _T(": cannot create short name of %s."), pszPath);
+			return 1;
+		}
+		_tcscpy_s(pszPath, BUFFER_LENGTH, pszTemp);
+		if (!GetShortPath(pszRoot, &pszTemp)) {
+			_ftprintf(stderr, _T(PACKAGE_NAME) _T(": cannot create short name of %s."), pszRoot);
+			return 1;
+		}
+		_tcscpy_s(pszRoot, BUFFER_LENGTH, pszTemp);
+		free(pszTemp);
+		pszTemp = NULL;
+	}
+
+	/* if the path starts with bash root. */
+	if (_tcsstr(pszPath, pszRoot) == pszPath) {
+		/* fix bash root. */
+		len = _tcslen(pszPath);
+		if (len == _tcslen(pszRoot)) {
+			pszPath[len + 0] = '\\';
+			pszPath[len + 1] = '\0';
+		}
+	}
+
+	/* mode 'windows' or 'dos'. */
+	if (modeFlags & 2) {
+		/* fix style '/c/path/to/dir' -> 'C:/path/to/dir'. */
+		if (_istalpha(pszPath[1]) && 
+			(pszPath[0] == _T('/') || pszPath[0] == _T('\\')) && 
+			(pszPath[2] == _T('/') || pszPath[2] == _T('\\'))) {
+			pszPath[0] = _totupper(pszPath[1]);
+			pszPath[1] = _T(':');
+			/* pszPath[2] = _T('\\'); */
+		}
+		/* fix style 'c:/path/to/dir' -> 'C:/path/to/dir'. */
+		else if (_istlower(pszPath[0]) && pszPath[1] == _T(':')) {
+			pszPath[0] = _totupper(pszPath[0]);
+		}
+		/* convert '/' -> '\\'. */
+		convertSeperator(pszPath, BUFFER_LENGTH, _T('/'), _T('\\'));
+	}
+	/* mode 'mixed' or 'unix'. */
+	else {
+		/* mode 'unix'. */
+		if (!(modeFlags & 4)) {
+			/* if the path starts with bash root. */
+			if (_tcsstr(pszPath, pszRoot) == pszPath) {
+				/* fix bash root. */
+				len = _tcslen(pszRoot);
+				pszTemp = (LPTSTR) ((size_t) pszPath + len * sizeof(TCHAR));
+				_tcscpy_s(pszRoot, BUFFER_LENGTH, pszTemp);
+				_tcscpy_s(pszPath, BUFFER_LENGTH, pszRoot);
+			}
+			/* mode 'unix' and starts with 'C:'. */
+			if (!(modeFlags & 4) && _istalpha(pszPath[0]) && pszPath[1] == _T(':')) {
+				pszPath[1] = _totlower(pszPath[0]);
+				pszPath[0] = _T('/');
+			}
+		}
+		/* convert seperater '\\' -> '/'. */
+		convertSeperator(pszPath, BUFFER_LENGTH, _T('\\'), _T('/'));
+	}
+
+    return 0;
 }
 
 
